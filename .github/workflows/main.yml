@@ -6,13 +6,12 @@ on:
   pull_request:
     branches: [main, master]
   schedule:
-    - cron: '0 0 * * 0'  # weekly re-verification
+    - cron: '0 0 * * 0' # weekly re-verification
 
 jobs:
   audit:
     runs-on: ubuntu-latest
     name: GRUS Validated-Fact Audit Pipeline
-
     steps:
       - name: Checkout submission repository
         uses: actions/checkout@v4
@@ -27,14 +26,16 @@ jobs:
           python -m pip install --upgrade pip
           pip install numpy pyyaml cryptography
 
-      - name: Clone GRUS Audit Engine
+      - name: Materialize LLC Private Key
         run: |
-          git clone https://github.com/grus-utility/grus-audit-engine.git /tmp/grus-engine
+          echo "${{ secrets.GRUS_PRIVATE_KEY }}" > /tmp/private_key.pem
+          chmod 600 /tmp/private_key.pem
 
       - name: Run GRUS audit (10-stage pipeline)
         run: |
-          python /tmp/grus-engine/grus_audit_engine/audit_runner.py . \
-            --ledger-dir /tmp/grus-ledger \
+          python audit_runner.py . \
+            --ledger-dir ./grus-ledger \
+            --private-key /tmp/private_key.pem \
             --dry-run
 
       - name: Upload citation manifest as artifact
@@ -52,6 +53,3 @@ jobs:
           path: |
             ./CITATION_MANIFEST.yaml
             ./grus_audit_result.yaml
-
-
-                  
