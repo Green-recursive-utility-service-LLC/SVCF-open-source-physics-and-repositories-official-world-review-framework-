@@ -1,0 +1,98 @@
+name: GRUS Validated-Fact Audit Pipeline
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  schedule:
+    - cron: '0 0 * * 0'  # weekly re-verification
+  workflow_dispatch:
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    name: GRUS 10-Stage Audit
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Checkout submission repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install GRUS Audit Engine dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install numpy pyyaml cryptography
+
+      - name: Materialize LLC private key
+        # Reads the LLC's ed25519 private key from a GitHub Actions secret.
+        # The secret GRUS_PRIVATE_KEY must be set on the canonical LLC repo
+        # under: Settings → Secrets and variables → Actions → New repository secret
+        # Name: GRUS_PRIVATE_KEY
+        # Value: the full PEM contents of /etc/grus/private_key.pem
+        # The key is materialized to a temp path with mode 0600, used for the
+        # audit, and discarded when the runner is destroyed.
+        env:
+          GRUS_PRIVATE_KEY: ${{ secrets.GRUS_PRIVATE_KEY }}
+        run: |
+          if [ -n "$GRUS_PRIVATE_KEY" ]; then
+            mkdir -p /tmp/grus_keys
+            echo "$GRUS_PRIVATE_KEY" > /tmp/grus_keys/private_key.pem
+            chmod 600 /tmp/grus_keys/private_key.pem
+            echo "GRUS_KEY_AVAILABLE=true" >> $GITHUB_ENV
+            echo "✓ LLC private key materialized for canonical signing"
+          else
+            echo "GRUS_KEY_AVAILABLE=false" >> $GITHUB_ENV
+            echo "⚠ No LLC private key configured — audit will run with ephemeral key (non-canonical seal)"
+          fi
+
+      - name: Clone GRUS Audit Engine
+        run: |
+          git clone https://github.com/grus-utility/grus-audit-engine.git /tmp/grus-engine
+
+      - name: Run GRUS audit (10-stage pipeline) — canonical signing
+        if: env.GRUS_KEY_AVAILABLE == 'true'
+        run: |
+          python /tmp/grus-engine/grus_audit_engine/audit_runner.py . \
+            --ledger-dir /tmp/grus-ledger \
+            --private-key /tmp/grus_keys/private_key.pem
+
+      - name: Run GRUS audit (10-stage pipeline) — ephemeral signing (dev/CI fallback)
+        if: env.GRUS_KEY_AVAILABLE == 'false'
+        run: |
+          python /tmp/grus-engine/grus_audit_engine/audit_runner.py . \
+            --ledger-dir /tmp/grus-ledger \
+            --allow-ephemeral \
+            --dry-run
+
+      - name: Upload citation manifest
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: citation-manifest
+          path: ./CITATION_MANIFEST.yaml
+          if-no-files-found: warn
+
+      - name: Upload audit result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: grus-audit-result
+          path: |
+            ./CITATION_MANIFEST.yaml
+            /tmp/grus-ledger/
+          if-no-files-found: warn
+
+      - name: Clean up materialized key
+        if: always()
+        run: |
+          rm -rf /tmp/grus_keys
+          echo "✓ Materialized key destroyed"
+
