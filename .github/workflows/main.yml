@@ -1,4 +1,4 @@
-name: GRUS Certification Audit
+name: GRUS Validated-Fact Audit Pipeline
 
 on:
   push:
@@ -6,12 +6,17 @@ on:
   pull_request:
     branches: [main, master]
   schedule:
-    - cron: '0 0 * * 0' # weekly re-verification
+    - cron: '0 0 * * 0'  # weekly re-verification
+  workflow_dispatch:
 
 jobs:
   audit:
     runs-on: ubuntu-latest
-    name: GRUS Validated-Fact Audit Pipeline
+    name: GRUS 10-Stage Audit
+    permissions:
+      contents: read
+      pull-requests: write
+
     steps:
       - name: Checkout submission repository
         uses: actions/checkout@v4
@@ -26,30 +31,80 @@ jobs:
           python -m pip install --upgrade pip
           pip install numpy pyyaml cryptography
 
-      - name: Materialize LLC Private Key
+      - name: Materialize LLC private key
+        # The LLC's ed25519 private key is stored as the GitHub secret GRUS_PRIVATE_KEY.
+        # GitHub redacts the secret in logs (shows '***') but the env-var injection
+        # delivers the actual value. We MUST use python's stdin write rather than
+        # `echo`/`printf` — those break when secrets contain leading dashes, slashes,
+        # or PEM newline structure that bash interprets. Python writes raw bytes.
+        env:
+          GRUS_PRIVATE_KEY: ${{ secrets.GRUS_PRIVATE_KEY }}
         run: |
-          echo "${{ secrets.GRUS_PRIVATE_KEY }}" > /tmp/private_key.pem
-          chmod 600 /tmp/private_key.pem
+          mkdir -p /tmp/grus_keys
+          if [ -z "${GRUS_PRIVATE_KEY:-}" ]; then
+            echo "GRUS_KEY_AVAILABLE=false" >> $GITHUB_ENV
+            echo "::warning::No GRUS_PRIVATE_KEY secret configured — audit will fall back to ephemeral signing"
+            exit 0
+          fi
+          # Write the key using Python (handles raw PEM bytes correctly).
+          python3 -c "
+          import os, sys
+          key = os.environ['GRUS_PRIVATE_KEY']
+          # Normalize: ensure it ends with a newline (PEM requires trailing newline)
+          if not key.endswith('\n'):
+              key += '\n'
+          with open('/tmp/grus_keys/private_key.pem', 'w') as f:
+              f.write(key)
+          # Verify it parses as a real ed25519 PEM key
+          from cryptography.hazmat.primitives import serialization
+          with open('/tmp/grus_keys/private_key.pem', 'rb') as f:
+              priv = serialization.load_pem_private_key(f.read(), password=None)
+          print(f'Key loaded successfully: {type(priv).__name__}')
+          "
+          chmod 600 /tmp/grus_keys/private_key.pem
+          echo "GRUS_KEY_AVAILABLE=true" >> $GITHUB_ENV
+          echo "::notice::LLC private key materialized and verified"
 
-      - name: Run GRUS audit (10-stage pipeline)
+      - name: Clone GRUS Audit Engine
         run: |
-          python audit_runner.py . \
-            --ledger-dir ./grus-ledger \
-            --private-key /tmp/private_key.pem \
+          git clone https://github.com/grus-utility/grus-audit-engine.git /tmp/grus-engine
+
+      - name: Run GRUS audit (canonical signing)
+        if: env.GRUS_KEY_AVAILABLE == 'true'
+        run: |
+          python /tmp/grus-engine/grus_audit_engine/audit_runner.py . \
+            --ledger-dir /tmp/grus-ledger \
+            --private-key /tmp/grus_keys/private_key.pem
+
+      - name: Run GRUS audit (ephemeral fallback for forks/PRs without secret access)
+        if: env.GRUS_KEY_AVAILABLE == 'false'
+        run: |
+          python /tmp/grus-engine/grus_audit_engine/audit_runner.py . \
+            --ledger-dir /tmp/grus-ledger \
+            --allow-ephemeral \
             --dry-run
 
-      - name: Upload citation manifest as artifact
+      - name: Upload citation manifest
         if: success()
         uses: actions/upload-artifact@v4
         with:
           name: citation-manifest
           path: ./CITATION_MANIFEST.yaml
+          if-no-files-found: warn
 
-      - name: Upload audit result as artifact
+      - name: Upload audit result
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: grus-audit-result
           path: |
             ./CITATION_MANIFEST.yaml
-            ./grus_audit_result.yaml
+            /tmp/grus-ledger/
+          if-no-files-found: warn
+
+      - name: Clean up materialized key
+        if: always()
+        run: |
+          rm -rf /tmp/grus_keys
+          echo "Materialized key destroyed"
+
