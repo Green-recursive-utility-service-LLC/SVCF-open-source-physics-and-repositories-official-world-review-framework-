@@ -6,47 +6,50 @@ certifying_entity: "Green Recursive Utility Service LLC"
 timestamp_locked: "2025-11-16"
 primary_index: "rxiVerse:2602.0018"
 foundation_doi: "10.5281/zenodo.18604376"
-​repository_targets:
-​verify.py
-​svcf_constants.py
-​svcf_domains.py
-​svcf_solar_system.py
-​svcf_quantum.py
-​locked_constants:
-​symbol: "GAMMA"
-value: 0.000350017500875
-exact_ratio: "1/2857"
-source: "STAR Collaboration / RHIC"
-​symbol: "B"
-value: 0.969696969696969
-exact_ratio: "32/33"
-source: "Brinkman screening, N=37 mode count"
-​symbol: "BETA"
-value: 0.984848484848484
-exact_ratio: "65/66"
-source: "Law #1 / Derived (B+1)/2"
-​symbol: "PSI"
-value: 0.414213562373095
-exact_ratio: "sqrt(2)-1"
-source: "37D->4D spherical projection"
-​symbol: "K_TD"
-value: 11100
-exact_ratio: "37*300"
-source: "Tensor drag coupling"
-​symbol: "K_MODE"
-value: 9
-exact_ratio: "9"
-source: "T^7 KK topology"
-​public_datasets:
-​url: "https://www.star.bnl.gov/"
-statute: "DOE Order 241.1B"
-​url: "http://astroweb.cwru.edu/SPARC/"
-statute: "NSF Public Access"
-​url: "https://www.chime-frb.ca/catalog"
-statute: "NSF Public Access"
-​url: "https://pds.nasa.gov/"
-statute: "NASA NPD 2590.1C"
-​url: "https://www.nndc.bnl.gov/"
-statute: "DOE Order 241.1B"
-​url: "https://spdf.gsfc.nasa.gov/pub/data/psp/"
-statute: "NASA NPD 2590.1C"
+
+repository_targets:
+  - verify.py
+  - svcf_constants.py
+  - svcf_domains.py
+  - svcf_solar_system.py
+  - svcf_quantum.py
+
+locked_constants:
+  - symbol: "GAMMA"
+    value: 0.000350017500875
+    exact_ratio: "1/2857"
+    source: "STAR Collaboration / RHIC"
+  - symbol: "B"
+    value: 0.969696969696969
+    exact_ratio: "32/33"
+    source: "Brinkman screening, N=37 mode count"
+  - symbol: "BETA"
+    value: 0.984848484848484
+    exact_ratio: "65/66"
+    source: "Law #1 / Derived (B+1)/2"
+  - symbol: "PSI"
+    value: 0.414213562373095
+    exact_ratio: "sqrt(2)-1"
+    source: "37D->4D spherical projection"
+  - symbol: "K_TD"
+    value: 11100
+    exact_ratio: "37*300"
+    source: "Tensor drag coupling"
+  - symbol: "K_MODE"
+    value: 9
+    exact_ratio: "9"
+    source: "T^7 KK topology"
+
+public_datasets:
+  - url: "https://www.star.bnl.gov/"
+    statute: "DOE Order 241.1B"
+  - url: "http://astroweb.cwru.edu/SPARC/"
+    statute: "NSF Public Access"
+  - url: "https://www.chime-frb.ca/catalog"
+    statute: "NSF Public Access"
+  - url: "https://pds.nasa.gov/"
+    statute: "NASA NPD 2590.1C"
+  - url: "https://www.nndc.bnl.gov/"
+    statute: "DOE Order 241.1B"
+  - url: "https://spdf.gsfc.nasa.gov/pub/data/psp/"
+    statute: "NASA NPD 2590.1C"
