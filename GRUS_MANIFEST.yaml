@@ -1,7 +1,7 @@
 manifest_version: "1.0"
 submission_id: "SVCF-2602-0018"
 submission_title: "Spacetime Viscosity and Centrifugal Force (SVCF) Open Source Physics"
-author: "Nicholas W. Cordova"
+contributor_name: "Nicholas W. Cordova"
 certifying_entity: "Green Recursive Utility Service LLC"
 timestamp_locked: "2025-11-16"
 primary_index: "rxiVerse:2602.0018"
