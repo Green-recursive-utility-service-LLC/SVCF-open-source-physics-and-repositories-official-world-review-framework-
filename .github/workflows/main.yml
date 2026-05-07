@@ -1,4 +1,4 @@
-name: GRUS Certification Audit
+name: GRUS Validated-Fact Audit Pipeline
 
 on:
   push:
@@ -7,11 +7,16 @@ on:
     branches: [main, master]
   schedule:
     - cron: '0 0 * * 0'
+  workflow_dispatch:
 
 jobs:
   audit:
     runs-on: ubuntu-latest
-    name: GRUS Validated-Fact Audit Pipeline
+    name: GRUS 10-Stage Audit
+    permissions:
+      contents: read
+      pull-requests: write
+
     steps:
       - name: Checkout submission repository
         uses: actions/checkout@v4
@@ -26,33 +31,74 @@ jobs:
           python -m pip install --upgrade pip
           pip install numpy pyyaml cryptography
 
-      - name: Materialize LLC Private Key
+      - name: Materialize LLC private key from secret
+        # Writes the GRUS_PRIVATE_KEY secret to a file via Python's stdin.
+        # Python reads the secret from os.environ — no shell tokenization.
+        # Then verifies the PEM is valid before allowing the workflow to continue.
         env:
-          PRIVATE_KEY: ${{ secrets.GRUS_PRIVATE_KEY }}
+          GRUS_PRIVATE_KEY: ${{ secrets.GRUS_PRIVATE_KEY }}
+        shell: python
         run: |
-          echo "$PRIVATE_KEY" > /tmp/private_key.pem
-          chmod 600 /tmp/private_key.pem
+          import os, sys
+          key = os.environ.get("GRUS_PRIVATE_KEY", "")
+          github_env = os.environ.get("GITHUB_ENV", "/dev/null")
+          if not key:
+              with open(github_env, "a") as f:
+                  f.write("GRUS_KEY_AVAILABLE=false\n")
+              print("::warning::No GRUS_PRIVATE_KEY secret configured — audit will fall back to ephemeral signing")
+              sys.exit(0)
+          os.makedirs("/tmp/grus_keys", exist_ok=True)
+          if not key.endswith("\n"):
+              key += "\n"
+          key_path = "/tmp/grus_keys/private_key.pem"
+          with open(key_path, "w") as f:
+              f.write(key)
+          os.chmod(key_path, 0o600)
+          # Verify the key parses as a valid ed25519 PEM
+          from cryptography.hazmat.primitives import serialization
+          with open(key_path, "rb") as f:
+              priv = serialization.load_pem_private_key(f.read(), password=None)
+          with open(github_env, "a") as f:
+              f.write("GRUS_KEY_AVAILABLE=true\n")
+          print(f"::notice::LLC private key materialized and verified ({type(priv).__name__})")
 
-      - name: Run GRUS audit (10-stage pipeline)
+      - name: Clone GRUS Audit Engine
+        run: git clone https://github.com/grus-utility/grus-audit-engine.git /tmp/grus-engine
+
+      - name: Run GRUS audit (canonical signing)
+        if: env.GRUS_KEY_AVAILABLE == 'true'
         run: |
-          python audit_runner.py . \
-            --ledger-dir ./grus-ledger \
-            --private-key /tmp/private_key.pem \
+          python /tmp/grus-engine/grus_audit_engine/audit_runner.py . \
+            --ledger-dir /tmp/grus-ledger \
+            --private-key /tmp/grus_keys/private_key.pem
+
+      - name: Run GRUS audit (ephemeral fallback)
+        if: env.GRUS_KEY_AVAILABLE == 'false'
+        run: |
+          python /tmp/grus-engine/grus_audit_engine/audit_runner.py . \
+            --ledger-dir /tmp/grus-ledger \
+            --allow-ephemeral \
             --dry-run
 
-      - name: Upload citation manifest as artifact
+      - name: Upload citation manifest
         if: success()
         uses: actions/upload-artifact@v4
         with:
           name: citation-manifest
           path: ./CITATION_MANIFEST.yaml
+          if-no-files-found: warn
 
-      - name: Upload audit result as artifact
+      - name: Upload audit result
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: grus-audit-result
           path: |
             ./CITATION_MANIFEST.yaml
-            ./grus_audit_result.yaml
-            
+            /tmp/grus-ledger/
+          if-no-files-found: warn
+
+      - name: Clean up materialized key
+        if: always()
+        run: rm -rf /tmp/grus_keys
+
