@@ -6,7 +6,7 @@ on:
   pull_request:
     branches: [main, master]
   schedule:
-    - cron: '0 0 * * 0'  # weekly re-verification
+    - cron: '0 0 * * 0'
   workflow_dispatch:
 
 jobs:
@@ -31,43 +31,39 @@ jobs:
           python -m pip install --upgrade pip
           pip install numpy pyyaml cryptography
 
-      - name: Materialize LLC private key
-        # The LLC's ed25519 private key is stored as the GitHub secret GRUS_PRIVATE_KEY.
-        # GitHub redacts the secret in logs (shows '***') but the env-var injection
-        # delivers the actual value. We MUST use python's stdin write rather than
-        # `echo`/`printf` — those break when secrets contain leading dashes, slashes,
-        # or PEM newline structure that bash interprets. Python writes raw bytes.
+      - name: Materialize LLC private key from secret
+        # Writes the GRUS_PRIVATE_KEY secret to a file via Python's stdin.
+        # Python reads the secret from os.environ — no shell tokenization.
+        # Then verifies the PEM is valid before allowing the workflow to continue.
         env:
           GRUS_PRIVATE_KEY: ${{ secrets.GRUS_PRIVATE_KEY }}
+        shell: python
         run: |
-          mkdir -p /tmp/grus_keys
-          if [ -z "${GRUS_PRIVATE_KEY:-}" ]; then
-            echo "GRUS_KEY_AVAILABLE=false" >> $GITHUB_ENV
-            echo "::warning::No GRUS_PRIVATE_KEY secret configured — audit will fall back to ephemeral signing"
-            exit 0
-          fi
-          # Write the key using Python (handles raw PEM bytes correctly).
-          python3 -c "
           import os, sys
-          key = os.environ['GRUS_PRIVATE_KEY']
-          # Normalize: ensure it ends with a newline (PEM requires trailing newline)
-          if not key.endswith('\n'):
-              key += '\n'
-          with open('/tmp/grus_keys/private_key.pem', 'w') as f:
+          key = os.environ.get("GRUS_PRIVATE_KEY", "")
+          github_env = os.environ.get("GITHUB_ENV", "/dev/null")
+          if not key:
+              with open(github_env, "a") as f:
+                  f.write("GRUS_KEY_AVAILABLE=false\n")
+              print("::warning::No GRUS_PRIVATE_KEY secret configured — audit will fall back to ephemeral signing")
+              sys.exit(0)
+          os.makedirs("/tmp/grus_keys", exist_ok=True)
+          if not key.endswith("\n"):
+              key += "\n"
+          key_path = "/tmp/grus_keys/private_key.pem"
+          with open(key_path, "w") as f:
               f.write(key)
-          # Verify it parses as a real ed25519 PEM key
+          os.chmod(key_path, 0o600)
+          # Verify the key parses as a valid ed25519 PEM
           from cryptography.hazmat.primitives import serialization
-          with open('/tmp/grus_keys/private_key.pem', 'rb') as f:
+          with open(key_path, "rb") as f:
               priv = serialization.load_pem_private_key(f.read(), password=None)
-          print(f'Key loaded successfully: {type(priv).__name__}')
-          "
-          chmod 600 /tmp/grus_keys/private_key.pem
-          echo "GRUS_KEY_AVAILABLE=true" >> $GITHUB_ENV
-          echo "::notice::LLC private key materialized and verified"
+          with open(github_env, "a") as f:
+              f.write("GRUS_KEY_AVAILABLE=true\n")
+          print(f"::notice::LLC private key materialized and verified ({type(priv).__name__})")
 
       - name: Clone GRUS Audit Engine
-        run: |
-          git clone https://github.com/grus-utility/grus-audit-engine.git /tmp/grus-engine
+        run: git clone https://github.com/grus-utility/grus-audit-engine.git /tmp/grus-engine
 
       - name: Run GRUS audit (canonical signing)
         if: env.GRUS_KEY_AVAILABLE == 'true'
@@ -76,7 +72,7 @@ jobs:
             --ledger-dir /tmp/grus-ledger \
             --private-key /tmp/grus_keys/private_key.pem
 
-      - name: Run GRUS audit (ephemeral fallback for forks/PRs without secret access)
+      - name: Run GRUS audit (ephemeral fallback)
         if: env.GRUS_KEY_AVAILABLE == 'false'
         run: |
           python /tmp/grus-engine/grus_audit_engine/audit_runner.py . \
@@ -104,7 +100,6 @@ jobs:
 
       - name: Clean up materialized key
         if: always()
-        run: |
-          rm -rf /tmp/grus_keys
-          echo "Materialized key destroyed"
+        run: rm -rf /tmp/grus_keys
 
+          
