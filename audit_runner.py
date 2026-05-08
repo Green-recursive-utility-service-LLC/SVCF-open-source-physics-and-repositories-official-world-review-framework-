@@ -68,3 +68,7 @@ def fetch_all_datasets(manifest):
             return FetchResult(False, failure_reason=f"Failed to source dataset {doi} from World Review nodes: {str(e)}")
 
     return FetchResult(True, datasets=fetched_records)
+
+if __name__ == "__main__":
+    main()
+    
