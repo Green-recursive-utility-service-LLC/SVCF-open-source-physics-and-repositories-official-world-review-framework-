@@ -2,12 +2,6 @@ submission_title: "Spacetime Viscosity and Centrifugal Force (SVCF) Open Source 
 contributor_name: "Nicholas W. Cordova"
 contributor_type: "individual"
 
-datasets_cited:
-  - id: 0
-    doi: "10.5281/zenodo.18604376"
-    access_statute: "World Review Framework - Clause 3 Public Access"
-
-
 license: "Open Source Physics"
 
 constants_used:
@@ -59,6 +53,10 @@ datasets_cited:
   - url: "https://spdf.gsfc.nasa.gov/pub/data/psp/"
     description: "NASA Parker Solar Probe data archive"
     access_statute: "NASA heliophysics public data archive"
+
+  - url: "https://10.5281/zenodo.18604376"
+    description: "Zenodo - SVCF Research Dataset"
+    access_statute: "World Review Framework - Clause 3 Public Access"
 
 predictions:
   - id: "C1"
