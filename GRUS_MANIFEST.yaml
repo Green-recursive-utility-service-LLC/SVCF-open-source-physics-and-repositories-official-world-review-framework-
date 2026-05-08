@@ -2,8 +2,11 @@ submission_title: "Spacetime Viscosity and Centrifugal Force (SVCF) Open Source 
 contributor_name: "Nicholas W. Cordova"
 contributor_type: "individual"
 
-doi: "10.5281/zenodo.18604376"
-doi_timestamp: "2025-11-16"
+datasets_cited:
+  - id: 0
+    doi: "10.5281/zenodo.18604376"
+    access_statute: "World Review Framework - Clause 3 Public Access"
+
 
 license: "Open Source Physics"
 
