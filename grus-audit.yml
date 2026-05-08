@@ -63,7 +63,7 @@ jobs:
           print(f"::notice::LLC private key materialized and verified ({type(priv).__name__})")
 
       - name: Clone GRUS Audit Engine
-        run: git clone https://github.com/grus-utility/grus-audit-engine.git /tmp/grus-engine
+        run: git clone https://github.com/nicholascordova01/SVCF-Quantum-World-Review-Codes
 
       - name: Run GRUS audit (canonical signing)
         if: env.GRUS_KEY_AVAILABLE == 'true'
