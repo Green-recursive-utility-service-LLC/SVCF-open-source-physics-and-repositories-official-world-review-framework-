@@ -1,25 +1,61 @@
 submission_title: "Spacetime Viscosity and Centrifugal Force (SVCF) Open Source Physics"
 contributor_name: "Nicholas W. Cordova"
 contributor_type: "individual"
+
 doi: "10.5281/zenodo.18604376"
 doi_timestamp: "2025-11-16"
+
 license: "Open Source Physics"
 
 constants_used:
-  - {symbol: "GAMMA", from: "svcf_constants.py", classification: "MEASURED"}
-  - {symbol: "B", from: "svcf_constants.py", classification: "EXACT"}
-  - {symbol: "BETA", from: "svcf_constants.py", classification: "EXACT"}
-  - {symbol: "PSI", from: "svcf_constants.py", classification: "EXACT"}
-  - {symbol: "K_TD", from: "svcf_constants.py", classification: "EXACT"}
-  - {symbol: "K_MODE", from: "svcf_constants.py", classification: "EXACT"}
+  - symbol: "GAMMA"
+    from: "svcf_constants.py"
+    classification: "MEASURED"
+
+  - symbol: "B"
+    from: "svcf_constants.py"
+    classification: "EXACT"
+
+  - symbol: "BETA"
+    from: "svcf_constants.py"
+    classification: "EXACT"
+
+  - symbol: "PSI"
+    from: "svcf_constants.py"
+    classification: "EXACT"
+
+  - symbol: "K_TD"
+    from: "svcf_constants.py"
+    classification: "EXACT"
+
+  - symbol: "K_MODE"
+    from: "svcf_constants.py"
+    classification: "EXACT"
 
 datasets_cited:
-  - {url: "https://www.star.bnl.gov/"}
-  - {url: "http://astroweb.cwru.edu/SPARC/"}
-  - {url: "https://www.chime-frb.ca/catalog"}
-  - {url: "https://pds.nasa.gov/"}
-  - {url: "https://www.nndc.bnl.gov/"}
-  - {url: "https://spdf.gsfc.nasa.gov/pub/data/psp/"}
+  - url: "https://www.star.bnl.gov/"
+    description: "Brookhaven STAR experiment data portal"
+    access_statute: "Public scientific research archive"
+
+  - url: "http://astroweb.cwru.edu/SPARC/"
+    description: "SPARC galaxy rotation curve database"
+    access_statute: "Public astrophysics research repository"
+
+  - url: "https://www.chime-frb.ca/catalog"
+    description: "CHIME Fast Radio Burst catalog"
+    access_statute: "Open scientific observational catalog"
+
+  - url: "https://pds.nasa.gov/"
+    description: "NASA Planetary Data System"
+    access_statute: "U.S. government public scientific archive"
+
+  - url: "https://www.nndc.bnl.gov/"
+    description: "National Nuclear Data Center"
+    access_statute: "U.S. national nuclear data repository"
+
+  - url: "https://spdf.gsfc.nasa.gov/pub/data/psp/"
+    description: "NASA Parker Solar Probe data archive"
+    access_statute: "NASA heliophysics public data archive"
 
 predictions:
   - id: "C1"
